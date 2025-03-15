@@ -50,58 +50,6 @@ def menm_theme() -> alt.theme.ThemeConfig:
     
     return (theme)
 
-plot = (
-    alt.Chart(article_counts)
-    .mark_bar(size=7)
-    .encode(
-        alt.X('year:T').title('Jaar'),
-        alt.Y('n:Q').title('Aantal Publicaties').stack(True),
-        alt.Color('section:O').title('Type Publicaties').legend(orient='bottom')
-    )
-    .configure_scale(barBandPaddingInner=0)
-)
-
-plot
-
-# dict(
-#     view=dict(
-#         width=600,
-#         height=300
-#     ),
-
-#     range=dict(
-#         nominal = dict(scheme = "greys"),
-#         category = dict(scheme = "greys"),
-#         ordinal = dict(scheme = "greys"),
-#         ramp = dict(scheme = "greys")
-#     ),
-
-#     axis=dict(
-#         titleFontSize=titleFontSize,
-#         labelFontSize=labelFontSize,
-#     ),
-#     axisX=dict(
-#         labelAngle=0,
-#         labelPadding=4,
-#         tickSize=3
-#     ),
-    
-#     axisY=dict(
-#         labelPadding=4,
-#         tickSize=3
-#     ),
-
-#     # legend
-#     legend=dict(
-#         titleFontSize=titleFontSize,
-#         symbolType='square',
-#         labelFontSize=labelFontSize + 1,
-#         orient='bottom',
-#         # direction='vertical'
-#     ),
-# )
-
-
 
 def save_plot(plot, title):
     plot.save(f'figures/{title}.pdf')

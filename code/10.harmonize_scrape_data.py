@@ -340,7 +340,8 @@ df = (
                 (df_['section'] == 'algemeen'), 
                 'artikel'
             ),
-        year = lambda df_: df_['year'].mask(lambda x: x == 'None', '1975')
+        year = lambda df_: df_['year'].mask(lambda x: x == 'None', '1975'),
+        page_count = lambda df_: df_['page_count'].astype('Int64')
     )
     .pipe(add_topics)
 )
@@ -348,7 +349,7 @@ df = (
 cols = [
     'year', 'id', 'issue_label', 'title', 'authors', 'section',
     'abstract', 'eng_title', 'tags', 'topic_label', 'topic_order', 
-    'url', 'pdf_url', 
+    'page_count','url', 'pdf_url', 
 ]
 out_file = os.path.join('data', 'articles.xlsx')
 df.loc[:, cols].to_excel(out_file, index=False)
