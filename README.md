@@ -8,9 +8,9 @@ The repository is organized as follows:
 
 - **`code/`**: Contains scripts and notebooks used for data analysis and visualization related to the journal's publications over the past century.
 
-- **`data/`**: Includes datasets extracted from the journal's archives, such as publication metadata, author information, and thematic categorizations.
+- **`data/`**: Includes datasets extracted from the journal's archives, such as publication metadata, and author information.
 
-- **`decades/`**: Features analyses and summaries of the journal's content, segmented by decade, highlighting trends and significant developments in sociological research.
+- **`decades/`**: Features analyses and summaries of the journal's content, segmented by decade.
 
 - **`figures/`**: Houses visual representations, including graphs and charts, illustrating various analytical insights derived from the data.
 
@@ -23,8 +23,6 @@ The primary goals of this project are:
 1. **Historical Analysis**: Examine the evolution of sociological themes and research focuses published in *Mens en Maatschappij* over the last 100 years.
 
 2. **Authorship Trends**: Investigate patterns in authorship, including collaborations, institutional affiliations, and demographic shifts.
-
-3. **Impact Assessment**: Assess the journal's influence on Dutch sociology and its contribution to broader social science discussions.
 
 ## Getting Started
 

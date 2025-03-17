@@ -2,7 +2,9 @@ import os
 import re
 import pandas as pd
 from IPython.display import display, Markdown
+from tqdm.notebook import tqdm
 import altair as alt
+import arviz as az
 
 @alt.theme.register("menm_theme", enable=True)
 def menm_theme() -> alt.theme.ThemeConfig:
@@ -112,131 +114,58 @@ save_plot(plot, 'article_counts')
 
 # page counts ------------------------------------------------------------------
 
-from formulaic import Formula
-import pymc as pm
-import numpy as np
-import nutpie
-import arviz as az
 
 data = (
     articles
     .loc[lambda df_: (df_['section']=='artikel') & articles_selection]
 )
 
-formula = Formula("bs(year, df=7, degree=6)")
-B = formula.get_model_matrix(data).drop('Intercept', axis=1)
+x = data['year'].values
+y = data['page_count'].values
+x_grid = np.linspace(x.min(), x.max(), len(np.unique(x)))
+n_bootstraps = 10000
+predictions = np.zeros((n_bootstraps, len(x_grid)))
+frac = 0.1
 
-# PyMC spline regression model
-# with pm.Model() as spline_model:
-#     # Priors for spline coefficients
-#     coef = pm.Normal("coef", mu=0, sigma=10, shape=spline_basis.shape[1])
-#     intercept = pm.Normal("intercept", mu=a["page_count"].mean(), sigma=10)
-#     sigma = pm.HalfNormal("sigma", sigma=10)
+for i in tqdm(range(n_bootstraps), total = n_bootstraps):
+    data_sample = data.sample(n=len(data), replace=True)
+    loess_fit = lowess(data_sample['page_count'], data_sample['year'], frac=frac)
+    predictions[i] = np.interp(x_grid, loess_fit[:, 0], loess_fit[:, 1])
 
-#     # Expected value
-#     mu = intercept + pm.math.dot(spline_basis.values, coef)
-#     obs = pm.Normal("obs", mu=mu, sigma=sigma, observed=a["page_count"])
+pred_data = pd.DataFrame(predictions, columns=np.int64(x_grid))
 
-COORDS = {"splines": np.arange(B.shape[1])}
-
-with pm.Model(coords=COORDS) as model:
-    x = pm.Data('x', value=data.year)
-    a = pm.StudentT("a", nu=10, mu=10, sigma=1)
-    w = pm.StudentT("w", nu=10, mu=0, sigma=1, dims="splines")
-    mu = pm.Deterministic("mu", a + pm.math.dot(B, w.T))
-    sigma = pm.HalfStudentT("sigma", nu=5, sigma=1)
-    
-    alpha = pm.StudentT("alpha", nu=5, mu=0, sigma=1.5)
-    mean = pm.Deterministic(
-        "mean", mu + sigma * pm.math.sqrt(2/np.pi) 
-        * (alpha/pm.math.sqrt(1 + pm.math.sqr(alpha)))
-    )
-
-    y = pm.SkewNormal(
-        "y", mu=mu, sigma=sigma, alpha=alpha, 
-        observed=data.page_count, shape=len(data.year)
-    )
-
-compiled_model = nutpie.compile_pymc_model(model)
-trace = nutpie.sample(compiled_model)
-
-with model:
-    ppc = pm.sample_posterior_predictive(trace, var_names=["y"], random_seed=42)
-
-
-pred = (
-    ppc['posterior_predictive']
-    .to_dataframe()
-    .unstack(level=[0, 1])
-    .assign(x = data.year.values)
-    .stack(level=[1, 2])
-    .reset_index()
-    .assign(x = lambda df_: df_.groupby('y_dim_2')['x'].transform(lambda x: x.max()))
-    .dropna()
-    .set_index(['y_dim_2', 'chain', 'draw'])\
-    .groupby('x')
-)
-
-
-m = pred.mean()
-ci89 = pred.apply(compute_hdi_for_group, 0.89)
-ci60 = pred.apply(compute_hdi_for_group, 0.60)
-
+# Compute summary statistics for each grid point.
 pdata = (
-    pd.concat([m, ci89, ci60], axis=1)
-    .reset_index()
-    .assign(x = lambda df_: df_['x'].astype(int).astype('str'))
-    .melt(id_vars=['x', 'y'])
-    .assign(
-        level = lambda df_: 
-            df_['variable'].str.split('.').str[-1].map({'6': '60', '89': '89'}),
-        variable = lambda df_: df_['variable'].str.split('.').str[0]
-    )
-    .pivot(index=['x', 'y', 'level'], columns='variable', values='value')
-    .reset_index()
+    pd.DataFrame({
+        'year': x_grid,
+        'mean': pred_data.mean(axis=0).values,
+        'll': az.hdi(pred_data.values, hdi_prob=0.95).T[0],
+        'ul': az.hdi(pred_data.values, hdi_prob=0.95).T[1]
+    })
+    .assign(year = lambda df_: df_['year'].astype(int).astype(str))
 )
 
 base = (
     alt.Chart(pdata)
     .encode(
-        alt.X('x:T').title('Jaar'),
-        alt.Y('y:Q').title("Aantal Pagina's"),
+        alt.X('year:T').title('Jaar'),
+        alt.Y('mean:Q').title("Aantal Pagina's"),
     )
 )
 
-line = (
-    base
-    .mark_line()
-    .transform_filter(
-        alt.FieldEqualPredicate(field='level', equal='89')
-    )
-)
+line = base.mark_line()
 
-ci89 = (
+ci = (
     base
     .mark_area(opacity=0.6)
     .encode(
         alt.Y('ll:Q'),
         alt.Y2('ul:Q')
     )
-    .transform_filter(
-        alt.FieldEqualPredicate(field='level', equal='89')
-    )
 )
 
-ci60 = (
-    base
-    .mark_area(opacity=0.6)
-    .encode(
-        alt.Y('ll:Q'),
-        alt.Y2('ul:Q')
-    )
-    .transform_filter(
-        alt.FieldEqualPredicate(field='level', equal='60')
-    )
-)
-
-plot = ci60 + ci89 + line
+plot = ci + line
+save_plot(plot, 'page_counts')
 
 (
     articles
@@ -251,7 +180,7 @@ plot = ci60 + ci89 + line
         year = lambda df_: df_['year'].astype(str)
     )
     .groupby('decade', observed=False)['page_count']
-    .agg(['mean', 'std'])
+    .agg(['size', 'mean', 'std'])
     .to_excel(os.path.join('tables', "page_counts.xlsx"))
 )
 
