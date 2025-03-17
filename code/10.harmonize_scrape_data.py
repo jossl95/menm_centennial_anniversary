@@ -280,7 +280,7 @@ def _get_topic_label(row: pd.Series) -> str:
     Returns:
         Topic category label.
     """
-    desc = row['Representation'].lower()
+    desc = str(row['Representation']).lower()
     
     if any(word in desc for word in ['migrant', 'immigrants']):
         return 'Migratie en Integratie'
