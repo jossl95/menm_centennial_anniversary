@@ -1,10 +1,14 @@
 import os
 import re
 import pandas as pd
+import numpy as np
 from IPython.display import display, Markdown
 from tqdm.notebook import tqdm
 import altair as alt
 import arviz as az
+
+import statsmodels.api as sm
+lowess = sm.nonparametric.lowess
 
 @alt.theme.register("menm_theme", enable=True)
 def menm_theme() -> alt.theme.ThemeConfig:

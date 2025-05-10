@@ -10,9 +10,14 @@ import os
 import pandas as pd
 from pathlib import Path
 
+import pymupdf
 import pymupdf4llm
 from multiprocess import Pool, cpu_count
 from tqdm.notebook import tqdm
+
+
+os.environ["TESSDATA_PREFIX"] = "/opt/homebrew/share/tessdata"
+DATA_DIR = Path('data')
 
 
 def is_downloaded(df: pd.DataFrame) -> List[bool]:
@@ -43,26 +48,19 @@ def extract_text_from_pdf(pdf_file: str) -> str:
     Returns:
         Extracted text in markdown format.
     """
-    return pymupdf4llm.to_markdown(
-        pdf_file, 
-        margins=(0., 10., 0., 70.),
-        show_progress=False
-    )
+    with pymupdf.open(pdf_file) as pdf:
+        md_text = pymupdf4llm.to_markdown(pdf, show_progress=False)
 
+    return(md_text)
 
-def dump_text(text: str, out_dir: str) -> None:
+def dump_text(text: str, outfile: str) -> None:
     """Save text content to a markdown file.
 
     Args:
         text: Text content to save.
-        out_dir: Directory path where to save the file.
+        out_dir: File path where to save the file.
     """
-    out_path = Path(out_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
-    
-    outfile = out_path / "text.md"
-    if not outfile.exists():
-        outfile.write_text(text, encoding='utf-8')
+    outfile.write_text(text, encoding='utf-8')
 
 
 def task(row: pd.Series) -> None:
@@ -71,15 +69,14 @@ def task(row: pd.Series) -> None:
     Args:
         row: Series containing article metadata.
     """
-    pdf_dir = os.path.join('data', 'pdf', row['year'])
-    pdf_file = os.path.join(pdf_dir, f"{row['id']}.pdf")
-    out_dir = os.path.join('data', 'text-images', row['year'], row['id'])
+    pdf_file = DATA_DIR / 'pdf' / row['year'] / f"{row['id']}.pdf"
+    out_path = DATA_DIR / 'text-images' / row['year'] / row['id']
+    outfile = out_path / "text.md"
     
-    os.makedirs(out_dir, exist_ok=True)
-    
-    if not os.path.isfile(os.path.join(out_dir, 'text.md')):
+    if outfile.exists():
+        out_path.mkdir(parents=True, exist_ok=True)
         md_text = extract_text_from_pdf(pdf_file)
-        dump_text(md_text, out_dir)
+        dump_text(md_text, outfile)
 
 
 def process_with_workers(df: pd.DataFrame, num_workers: Optional[int] = None) -> None:
@@ -101,7 +98,7 @@ def process_with_workers(df: pd.DataFrame, num_workers: Optional[int] = None) ->
 
 def main() -> None:
     """Execute the main text extraction workflow."""
-    file_path = os.path.join('data', 'scrape_data_combined.csv')
+    file_path = DATA_DIR / 'scrape_data_combined.csv'
     df = (
         pd.read_csv(file_path)
         .assign(year=lambda df_: df_['year'].astype(str))

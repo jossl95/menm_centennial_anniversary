@@ -3,10 +3,11 @@
 This module provides functionality to extract page count information from PDF files
 and add it to the article metadata database.
 """
+from typing import List, Optional, Tuple
 
 import os
 import warnings
-from typing import List, Optional, Tuple
+from pathlib import Path
 
 import pandas as pd
 from multiprocess import Pool, cpu_count
@@ -27,10 +28,10 @@ def get_page_count(row: pd.Series) -> Optional[int]:
         Tuple of (article_id, page_count), where page_count may be None
         if the PDF cannot be read.
     """
-    pdf_file = os.path.join('data', 'pdf', str(row['year']), f"{row['id']}.pdf")
-    page_count = None
+    pdf_file = Path('data') / 'pdf' / str(row['year']) / f"{row['id']}.pdf"
+    page_count = pd.NA
     
-    if os.path.isfile(pdf_file):
+    if pdf_file.exists():
         try:
             with PdfReader(pdf_file) as doc:
                 page_count = len(doc.pages)
@@ -71,7 +72,7 @@ def process_with_workers(
 
 def main() -> None:
     """Execute the main page count extraction workflow."""
-    file_path = os.path.join('data', 'scrape_data_combined.csv')
+    file_path = Path('data') / 'scrape_data_combined.csv'
     
     # Read and sort input data
     df = pd.read_csv(file_path).sort_values('id')
@@ -81,9 +82,10 @@ def main() -> None:
         process_with_workers(df), 
         columns=['id', 'page_count']
     )
+
+    df['page_count'] = results['page_count']
     
-    # Merge results and save
-    df.merge(results).to_csv(file_path, index=False)
+    df.to_csv(file_path, index=False)
 
 
 if __name__ == "__main__":

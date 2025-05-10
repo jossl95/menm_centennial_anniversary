@@ -93,8 +93,8 @@ def main() -> None:
         .pipe(fix_id)
     )
 
-    output_path = os.path.join('data', 'scrape_data_combined.csv')
-    df.to_csv(output_path, index=False)
+    file_path = Path('data') / 'scrape_data_combined.csv'
+    df.to_csv(file_path, index=False)
 
 
 if __name__ == "__main__":

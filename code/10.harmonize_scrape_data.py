@@ -6,6 +6,8 @@ including author names, issue labels, and topic classification.
 
 import os
 import pandas as pd
+
+
 from bertopic import BERTopic
 from IPython.display import display, Markdown
 from nameparser import HumanName
@@ -211,91 +213,11 @@ def _is_valid_name_match(name1: str, name2: str) -> bool:
     )
 
 
-def add_topics(articles: pd.DataFrame) -> pd.DataFrame:
-    """Add topic classifications to articles using BERTopic.
-
-    Args:
-        articles: DataFrame containing article metadata.
-
-    Returns:
-        DataFrame with added topic classifications.
-    """
-    abstracts = articles.loc[
-        ~articles['abstract'].isna(), 
-        ['id', 'year', 'abstract']
-    ]
-    
-    # Preprocess abstracts
-    stop_words = set(stopwords.words('english') + stopwords.words('dutch'))
-    processed_docs = [
-        ' '.join(
-            word for word in word_tokenize(doc)
-            if word.lower() not in stop_words
-        )
-        for doc in abstracts['abstract']
-    ]
-    
-    # Generate topics
-    topic_model = BERTopic()
-    topics, probs = topic_model.fit_transform(processed_docs)
-    abstracts['topic_id'] = topics
-    abstracts['topic_prob'] = probs
-    
-    # Map topics to categories
-    topic_order = [
-        'Familie', 'Stratificatie', 'Methoden', 'Economie',
-        'Migratie en Integratie', 'Religie', 'Criminaliteit',
-        'Sociale Netwerken', 'Cultuur', 'Overig'
-    ]
-    
-    topic_data = (
-        abstracts.merge(
-            topic_model.get_topic_info()[['Topic', 'Representation']], 
-            left_on='topic_id', 
-            right_on='Topic'
-        )
-        .assign(
-            y=lambda df_: df_['year'].astype(int),
-            year=lambda df_: df_['year'].astype(str),
-            topic_label=lambda df_: 
-                df_.apply(_get_topic_label, axis=1)
-                .pipe(pd.Categorical, categories=topic_order, ordered=True),
-            topic_order=lambda df_:
-                df_['topic_label'].pipe(pd.factorize)[0]
-        )
-    )
-    
-    return articles.merge(
-        topic_data[['id', 'topic_label', 'topic_order']],
-        how='left'
-    )
-
-
-def _get_topic_label(row: pd.Series) -> str:
-    """Determine topic label based on topic representation.
-
-    Args:
-        row: Series containing topic representation.
-
-    Returns:
-        Topic category label.
-    """
-    desc = str(row['Representation']).lower()
-    
-    if any(word in desc for word in ['migrant', 'immigrants']):
-        return 'Migratie en Integratie'
-    elif any(word in desc for word in ['unemployment', 'workers', 'economics']):
-        return 'Economie'
-    # ... additional topic mappings ...
-    else:
-        return 'Overig'
-
-
 def main() -> None:
     """Execute main data harmonization workflow."""
-    input_path = os.path.join('data', 'scrape_data_combined.csv')
-    df = pd.read_csv(input_path)
-    
+    file_path = Path('data') / 'scrape_data_combined.csv'
+    df = pd.read_csv(file_path)
+
     # Clean and process data
     df = (
         df
@@ -311,7 +233,7 @@ def main() -> None:
         .pipe(harmonize_issue_label)
         .pipe(clean_authors)
     )
-    
+
     # Process authors
     authors = (
         df
@@ -321,13 +243,10 @@ def main() -> None:
         .drop(['name', 'name_has_comma'], axis=1)
         .rename({'clean_name': 'name'}, axis=1)
     )
-    
-    # Save author data
-    authors.to_excel(
-        os.path.join('data', 'article_author_link.xlsx'), 
-        index=False
-    )
-    
+
+    authors_file = Path('data') / 'article_author_link.xlsx'
+    authors.to_excel(authors_file, index=False)
+
     # Update article data with processed authors
     df = (
         df
@@ -356,21 +275,17 @@ def main() -> None:
             year=lambda df_: df_['year'].mask(lambda x: x == 'None', '1975'),
             page_count=lambda df_: df_['page_count'].astype('Int64')
         )
-        .pipe(add_topics)
     )
-    
+
     # Save processed data
     cols = [
-        'year', 'id', 'issue_label', 'title', 'authors', 'section',
-        'abstract', 'eng_title', 'tags', 'topic_label', 'topic_order', 
-        'page_count', 'url', 'pdf_url', 
+        'id', 'year', 'issue_label', 'section', 'title', 'authors',
+        'abstract', 'tags', 'page_count', 'url', 'pdf_url', 
     ]
-    
-    df.loc[:, cols].to_excel(
-        os.path.join('data', 'articles.xlsx'), 
-        index=False
-    )
-    
+
+    articles_file = Path('data') / 'articles_metadata.xlsx'
+    df[cols].to_excel(articles_file, index=False)
+
     # Save decade-specific files
     for decade_start in range(1925, 2025, 10):
         decade_end = decade_start + 10
@@ -379,13 +294,9 @@ def main() -> None:
             (df['year'].astype(int) < decade_end),
             cols
         ]
-        decade_df.to_excel(
-            os.path.join(
-                'decades', 
-                f'articles {decade_start}-{decade_end}.xlsx'
-            ), 
-            index=False
-        )
+
+        decade_file = Path('decades') / f'articles {decade_start}-{decade_end}.xlsx'
+        decade_df.to_excel(decade_file, index=False)
 
 
 if __name__ == "__main__":
