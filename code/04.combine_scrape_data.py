@@ -10,6 +10,8 @@ import os
 import re
 import pandas as pd
 
+from pathlib import Path
+
 
 def validate_issue_format(series: pd.Series) -> pd.Series:
     """Validate if issue entries match the expected format.

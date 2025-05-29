@@ -69,7 +69,7 @@ def demarkdownify(text: str) -> str:
             .replace('-\n', ''))
 
 
-def parse_title(row: pd.Series) -> Union[str, pd.NA]:
+def parse_title(row: pd.Series) -> Union[str, None]:
     """Extract article title from first page content.
 
     Args:
@@ -78,7 +78,7 @@ def parse_title(row: pd.Series) -> Union[str, pd.NA]:
     Returns:
         title as a string
     """
-    title=pd.NA
+    title=None
     
     fp = demarkdownify(read_in_first_page(row, clean=False))
     top_of_front_page = re.split(r"(?:#+\ +)?Summary", fp, maxsplit=1)[0]
@@ -93,12 +93,12 @@ def parse_title(row: pd.Series) -> Union[str, pd.NA]:
         if match:
             title = f"{match.group(1)}: {match.group(2)}"
 
-    if title is pd.NA:
+    if not title:
         title = row['title']
 
     return title
 
-def parse_abstract(row: pd.Series) -> Union[str, pd.NA]:
+def parse_abstract(row: pd.Series) -> Union[str, None]:
     """Parse abstract from first page content.
 
     Args:
@@ -107,7 +107,7 @@ def parse_abstract(row: pd.Series) -> Union[str, pd.NA]:
     Returns:
         abstract as a string.
     """
-    abstract = pd.NA
+    abstract = None
 
     fp = demarkdownify(read_in_first_page(row, clean=False))
     
@@ -119,7 +119,7 @@ def parse_abstract(row: pd.Series) -> Union[str, pd.NA]:
     return abstract
 
 
-def parse_authors(row: pd.Series) -> Union[str, pd.NA]:
+def parse_authors(row: pd.Series) -> Union[str, None]:
     """Extract author information from page content.
 
     Args:
@@ -128,7 +128,7 @@ def parse_authors(row: pd.Series) -> Union[str, pd.NA]:
     Returns:
         authors list as a string
     """
-    authors = pd.NA
+    authors = None
 
     fp = demarkdownify(read_in_first_page(row, clean=False))
     lp = demarkdownify(read_in_last_page(row))
@@ -139,7 +139,7 @@ def parse_authors(row: pd.Series) -> Union[str, pd.NA]:
             authors = match.group(1).strip()
             authors = authors.replace(' en ', ', ')
             
-    if authors is pd.NA:
+    if authors is None:
         lp_ = lp.split('## L')[0]
         pattern = r'(?:[\.\?]\s{2,}([^0-9#&\_\r\n]{3,})\s*\d*\s*$)'
         match = re.search(pattern, lp_)
@@ -160,7 +160,7 @@ def parse_articles(df2):
     return df2
 
 
-def main() -> pd.NA:
+def main() -> None:
     """Execute main data processing workflow."""
     file_path = Path('data') / 'scrape_data_combined.csv'
 

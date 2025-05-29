@@ -172,7 +172,7 @@ def clean_full_text(text: str, row: pd.Series) -> str:
         Cleaned string.
     """
     text = clean_markdown(text)
-    text = slice_title_section(text)
+    # text = slice_title_section(text)
     pages = text.split("-----")
 
     clean_pages = []

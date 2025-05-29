@@ -7,7 +7,7 @@ including author names, issue labels, and topic classification.
 import os
 import pandas as pd
 
-
+from pathlib import Path
 from bertopic import BERTopic
 from IPython.display import display, Markdown
 from nameparser import HumanName

@@ -1,3 +1,10 @@
+""" Module for generating abstracts for all articles.
+
+    This module reads article metadata from an Excel file, summarizes each
+    article's text using Google's Gemini Pro model, and saves the summaries
+    to Markdown files. It requires the Google Generative AI library and a
+    valid API key.
+"""
 
 from typing import Text, Optional
 
