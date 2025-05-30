@@ -44,9 +44,8 @@ class ArticleSummarizer:
 
     def __init__(
         self,
-        model: Text = "gemini-2.0-flash",
+        model: Text = "gemini-1.5-flash",
         envvar: Optional[Text] = None,
-        temperature: float = 0.3,
     ):
         """Initializes the ArticleSummarizer with a specified Gemini model.
 
@@ -55,7 +54,6 @@ class ArticleSummarizer:
             temperature: The sampling temperature for the model.
         """
         self.model = model,
-        self.temperature = temperature,
         self.envvar = envvar or ENVVAR
         self.configure_api_key()
         self._llm = genai.GenerativeModel(model_name=model)
@@ -122,13 +120,21 @@ class ArticleSummarizer:
         
         return instructions
 
-    def summarize_articles(self, text_file, out_file) -> None:
+    def summarize_articles(self, text_file, out_file, verbose=False) -> None:
         """Summarizes the article text and saves it to a file.
         Args:
             row: A pandas Series containing article metadata.
         """
         instructions = self.set_instructions() 
-        prompt = [instructions, genai.upload_file(text_file)]
+        
+        if verbose:
+            with open(text_file, "r") as f:
+                text = f.read()
+            prompt = [instructions, text]
+        else:
+            prompt = [instructions, genai.upload_file(text_file)]
+        
+        
         response = self._llm.generate_content(prompt)
 
         if response:
@@ -164,6 +170,8 @@ def main():
             summarizer.summarize_articles(text_file, out_file)
         except Exception as e:
             print(f"Error summarizing text for {str(row["id"])}")
+            summarizer = ArticleSummarizer()
+            summarizer.summarize_articles(text_file, out_file, verbose=True)
             continue
     
 if __name__ == "__main__":
