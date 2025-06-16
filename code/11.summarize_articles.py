@@ -10,6 +10,7 @@ from typing import Text, Optional
 
 import os
 import getpass
+import time
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
@@ -44,7 +45,7 @@ class ArticleSummarizer:
 
     def __init__(
         self,
-        model: Text = "gemini-1.5-flash",
+        model: Text = "gemini-2.0-flash-lite",
         envvar: Optional[Text] = None,
     ):
         """Initializes the ArticleSummarizer with a specified Gemini model.
@@ -120,7 +121,7 @@ class ArticleSummarizer:
         
         return instructions
 
-    def summarize_articles(self, text_file, out_file, verbose=False) -> None:
+    def detect_articles(self, text_file, out_file, verbose=False) -> None:
         """Summarizes the article text and saves it to a file.
         Args:
             row: A pandas Series containing article metadata.
@@ -141,6 +142,82 @@ class ArticleSummarizer:
             with open(out_file, "w") as f:
                 f.write(response.text.strip())
 
+class MethodDetector:
+    """A class to summarize articles using Google's Gemini Pro model."""
+
+    def __init__(
+        self,
+        model: Text = "gemini-2.0-flash-lite", # "gemini-2.5-flash-preview-05-20"
+        envvar: Optional[Text] = None,
+    ):
+        """Initializes the ArticleSummarizer with a specified Gemini model.
+
+        Args:
+            model_name: The name of the Gemini model to use.
+            temperature: The sampling temperature for the model.
+        """
+        self.model = model,
+        self.envvar = envvar or ENVVAR
+        self.configure_api_key()
+        self._llm = genai.GenerativeModel(model_name=model)
+ 
+    def configure_api_key(self, overwrite: bool = False) -> Optional[Text]:
+        """Configures the API key for authentication.
+
+        Args:
+            overwrite: If True, forces re-entry of the API key even if it
+                already exists in the environment.
+
+        Returns:
+            The API key string if successfully configured, otherwise None.
+        """
+        _key_not_configured = self.envvar not in os.environ
+        if overwrite or _key_not_configured:
+            set_api_key(self.envvar)
+
+        api_key = get_api_key(self.envvar)
+        genai.configure(api_key=api_key)
+        return api_key
+    
+    def set_instructions(self, instructions: Optional[Text] = None) -> Text:
+        """Sets the system instructions for the summarization model."""
+        if not instructions: 
+            instructions = """
+            Jij bent een deskundige academische assistent. Jouw taak is om 
+            te bepalen welke methodiek is gebruik in het paper. Bepaal welke
+            methode is gebruikt in onderstaande tekst.
+
+            Je onderscheidt de volgende methode: "kwantitatief, kwalitatief,
+            literatuuronderzoek, mixed-methods, of overig". Geef als antwoord
+            enkel de gebruikte methodiek. Geef geen redenering.
+            """.replace("\n            ", "\n")
+        
+        return instructions
+
+
+    def detect_articles(self, text_file, mth_file, verbose=False) -> None:
+        """Summarizes the article text and saves it to a file.
+        Args:
+            row: A pandas Series containing article metadata.
+        """
+        instructions = self.set_instructions() 
+        
+        if verbose:
+            with open(text_file, "r") as f:
+                text = f.read()
+            prompt = [instructions, text]
+        else:
+            prompt = [instructions, genai.upload_file(text_file)]
+        
+        
+        response = self._llm.generate_content(prompt)
+
+        if response:
+            with open(mth_file, "w") as f:
+                f.write(response.text.strip())
+
+        return response 
+        
 def main():
     """Reads article metadata, summarizes each Markdown text file, and saves the summaries.
 
@@ -158,21 +235,42 @@ def main():
         text_dir = BASEDIR / str(row["year"]) / str(row["id"])
         text_file = text_dir / "clean_text.md"
         out_file = text_dir / "summary.md"
+        mth_file = text_dir / "method.md"
         
         if not text_file.exists():
             continue
 
-        if out_file.exists():
+        if mth_file.exists():
             continue
 
         try:
-            summarizer = ArticleSummarizer()
-            summarizer.summarize_articles(text_file, out_file)
+            detector = MethodDetector()
+            detector.detect_articles(text_file, mth_file)
         except Exception as e:
-            print(f"Error summarizing text for {str(row["id"])}")
-            summarizer = ArticleSummarizer()
-            summarizer.summarize_articles(text_file, out_file, verbose=True)
+            print(f"Error detecting method for {str(row["id"])}")
+            detector = MethodDetector()
+            detector.detect_articles(text_file, mth_file, verbose=True)
             continue
+
+        # if out_file.exists():
+        #     continue
+
+        # try:
+        #     summarizer = ArticleSummarizer()
+        #     summarizer.summarize_articles(text_file, out_file)
+        # except Exception as e:
+        #     print(f"Error summarizing text for {str(row["id"])}")
+        #     summarizer = ArticleSummarizer()
+        #     summarizer.summarize_articles(text_file, out_file, verbose=True)
+        #     continue
+
+        # time.sleep(0.5)
+        
+
+    
     
 if __name__ == "__main__":
     main()
+
+
+
