@@ -6,11 +6,9 @@ This repository commemorates the centennial anniversary of *Mens en Maatschappij
 
 The repository is organized as follows:
 
-- **`code/`**: Contains scripts and notebooks used for data analysis and visualization related to the journal's publications over the past century.
+- **`code/`**: Contains scripts used for data analysis and visualization related to the journal's publications over the past century.
 
 - **`data/`**: Includes datasets extracted from the journal's archives, such as publication metadata, and author information.
-
-- **`decades/`**: Features analyses and summaries of the journal's content, segmented by decade.
 
 - **`figures/`**: Houses visual representations, including graphs and charts, illustrating various analytical insights derived from the data.
 
@@ -18,11 +16,13 @@ The repository is organized as follows:
 
 ## Objectives
 
-The primary goals of this project are:
+This project aims to produce reproducible, time‑series indicators on:
 
-1. **Historical Analysis**: Examine the evolution of sociological themes and research focuses published in *Mens en Maatschappij* over the last 100 years.
-
-2. **Authorship Trends**: Investigate patterns in authorship, including collaborations, institutional affiliations, and demographic shifts.
+1. **Publication volume by year** — Count articles published per year and identify long‑term trends and notable inflection points.
+2. **Paper length over time** — Compute and track the average number of pages per article by year (with dispersion statistics) to detect shifts in article length.
+3. **Most‑published authors** — Rank authors by number of publications and summarize their active periods.
+4. **Topical change** — Map how published topics evolve across decades, highlighting emerging and declining themes.
+5. **Methodological trends** — Classify and quantify research methods (e.g., qualitative, quantitative, mixed‑methods) and track changes over time.
 
 ## Getting Started
 
