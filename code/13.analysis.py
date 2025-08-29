@@ -45,6 +45,7 @@ def menm_theme() -> alt.theme.ThemeConfig:
 def save_plot(plot, title):
     plot.save(f"figures/{title}.pdf")
     plot.save(f"figures/{title}.svg")
+    plot.save(f"figures/{title}.png", ppi=500)
 
 
 
@@ -117,6 +118,39 @@ selection = lambda d: (
     (d["page_count"] > 3) & (d["page_count"] < 75)
 )
 
+# Research Methods -------------------------------------------------------
+
+d = (
+    data2
+    .pipe(read_method_parallel)
+    .assign(
+        method = lambda d_: d_['method']
+            .str.title()
+            .str.split('\n').str[0]
+            .str.replace('Literatuuroverzicht','Literatuuronderzoek')
+            .str.replace('Kwalitatief, Mixed-Methods', 'Mixed-Methods')
+    )
+    .groupby(["year", "method"])
+    .size()
+    .to_frame(name='count')
+    .reset_index()
+)
+
+plot = (
+    alt.Chart(d)
+    .mark_area(interpolate="step-after")
+    .encode(
+        alt.X('year:T').title("Jaar"),
+        alt.Y('count:Q')
+            .stack('normalize')
+            .title("Aantal Publicaties"),
+        alt.Color('method:N')
+            .title("Methodologie")
+            .legend(orient="bottom")
+    )
+)
+
+save_plot(plot, "method_counts")
 
 # Article counts ---------------------------------------------------------
 
@@ -225,32 +259,41 @@ tdata = (
     .assign(dt = lambda df_: pd.to_datetime(df_['year'].astype(str), format="%Y"))
 )
 
-plot = (
+area = (
     alt.Chart(tdata)
     .mark_area(interpolate='step-after')
     .encode(
         alt.X('dt:T').title(None),
         alt.Y('count:Q').title(None),
-        alt.Color("topic_label:N", title="Topic")
-            .scale(scheme="category20")
-            .legend(orient="bottom", columns=6)
+        alt.Color('topic_label:N', title='Topic')
+            .scale(scheme='category20')
+            .legend(orient='bottom', columns=6)
     )
-    .properties(height=100, width = 215)
-    .facet(alt.Row('topic_label').title("Count"), columns=3)
-    .configure_facet(
-        spacing=7.5
-    )
-    .configure_header(
-        # labelFontSize=0
-        labelBaseline="top",
-        labelFontSize=11,
-        labelAnchor="start",
-        labelPadding=5,
-        labelFontWeight='bold',
-        titleOrient='left'
+    .properties(height=100, width=215)
+)
+
+
+label = (
+    alt.Chart(tdata)
+    # one row per facet to avoid duplicate text draws
+    .transform_aggregate(n='count()', groupby=['topic_label'])
+    .mark_text(align='left', baseline='top', fontSize=11, fontWeight='bold')
+    .encode(
+        text='topic_label:N',
+        x=alt.value(5),   # px from left
+        y=alt.value(5)   # px from top
     )
 )
 
+plot = (
+    alt.layer(area, label)
+    .facet(
+        alt.Row('topic_label:N', 
+                header=alt.Header(labelExpr="''", labels = False, title=None)),
+        columns=3
+    )
+    .configure_facet(spacing=7.5)
+)
+
+
 save_plot(plot, "topic_prevalence_facet")
-
-

@@ -49,6 +49,7 @@ def compute_hdi_for_group(group, hdi_prob=0.95):
 def save_plot(plot, title):
     plot.save(f"figures/{title}.pdf")
     plot.save(f"figures/{title}.svg")
+    plot.save(f"figures/{title}.png", ppi=500)
 
 
 articles_file = os.path.join("data", "articles.xlsx")
@@ -62,7 +63,7 @@ authors = pd.read_excel(authors_file)
 
 # Article counts
 article_counts = (
-    articles.assign(year=lambda df_: df_["year"].astype(str))
+    articles
     .groupby(["year", "section"]).size()
     .reset_index()
     .rename({0: "n"}, axis=1)
@@ -88,7 +89,7 @@ save_plot(plot, "article_counts")
     ]
     .assign(
         decade=lambda df_: df_["year"].astype(int).pipe(
-            pd.cut, bins=[y for y in range(1935, 2035, 10)]
+            pd.cut, bins=[y for y in range(1925, 2035, 10)]
         ),
         year=lambda df_: df_["year"].astype(str)
     )
@@ -124,7 +125,7 @@ pdata = pd.DataFrame({
     "mean": pred_data.mean(axis=0).values,
     "ll": az.hdi(pred_data.values, hdi_prob=0.95).T[0],
     "ul": az.hdi(pred_data.values, hdi_prob=0.95).T[1],
-}).assign(year=lambda df_: df_["year"].astype(int).astype(str))
+}).assign(year=lambda df_: df_["year"].astype(int))
 
 base = alt.Chart(pdata).encode(
     alt.X("year:T").title("Jaar"),
@@ -146,7 +147,7 @@ save_plot(plot, "page_counts")
     ]
     .assign(
         decade=lambda df_: df_["year"].astype(int).pipe(
-            pd.cut, bins=[y for y in range(1935, 2035, 10)]
+            pd.cut, bins=[y for y in range(1925, 2035, 10)]
         ),
         year=lambda df_: df_["year"].astype(str)
     )
@@ -162,7 +163,6 @@ author_counts = (
         lambda df_: df_["id"].isin(authors["id"].unique())
     ]
     .assign(
-        year=lambda df_: df_["year"].astype(str),
         n_authors=lambda df_: df_["authors"]
             .str.split(", ").apply(len)
     )
@@ -208,7 +208,7 @@ hold = []
 
 for author in most_published_authors.index:
     cumcount_author = (
-        articles.assign(year=lambda df_: df_["year"].astype(str))
+        articles
         .loc[
             lambda df_: df_["id"].isin(authors["id"].unique())
         ]
