@@ -252,7 +252,7 @@ def main():
             detector.detect_articles(text_file, mth_file, verbose=True)
             continue
 
-        # if out_file.exists():
+        # if out_file.exists():x
         #     continue
 
         # try:
@@ -265,8 +265,6 @@ def main():
         #     continue
 
         # time.sleep(0.5)
-        
-
     
     
 if __name__ == "__main__":
